@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+*.log
+
+# ambiente local — nunca versionar segredos
+.env
+.env.*.local
