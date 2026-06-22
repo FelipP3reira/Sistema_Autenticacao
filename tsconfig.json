@@ -11,6 +11,7 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
     "verbatimModuleSyntax": true,
+    "esModuleInterop": true,
     "skipLibCheck": true,
     "sourceMap": true,
     "outDir": "dist",
