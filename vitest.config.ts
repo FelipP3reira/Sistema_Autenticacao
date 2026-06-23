@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
+    setupFiles: ['tests/setup.ts'],
     // Os testes de integração compartilham Postgres e Redis; rodar arquivos em
     // paralelo geraria corrida na limpeza entre eles.
     fileParallelism: false,
