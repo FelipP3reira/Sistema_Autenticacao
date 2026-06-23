@@ -11,7 +11,12 @@ import { assinarAccessToken } from '../../shared/jwt/access-token.js';
 import { prisma } from '../../shared/prisma/cliente.js';
 import type { Login, Registrar } from './auth.schema.js';
 import { checarBloqueio, limparFalhas, registrarFalha } from './lockout.js';
-import { emitirRefreshToken } from './refresh-token.js';
+import {
+  emitirRefreshToken,
+  revogarRefreshToken,
+  revogarTodosDoUsuario,
+  rotacionarRefreshToken,
+} from './refresh-token.js';
 import { apresentarUsuario, type UsuarioPublico } from './usuario.mapeador.js';
 import { consumirTokenVerificacao, gerarTokenVerificacao } from './verificacao-email.js';
 
@@ -61,6 +66,25 @@ export async function login(dados: Login): Promise<ResultadoLogin> {
   const refreshToken = await emitirRefreshToken(usuario.id);
 
   return { usuario: apresentarUsuario(usuario), accessToken, refreshToken };
+}
+
+export async function renovarSessao(refreshTokenApresentado: string): Promise<ResultadoLogin> {
+  const { userId, novoRefreshToken } = await rotacionarRefreshToken(refreshTokenApresentado);
+
+  const usuario = await prisma.user.findUnique({ where: { id: userId } });
+  if (!usuario) {
+    await revogarTodosDoUsuario(userId);
+    throw new ErroNaoAutorizado('Sessão inválida.');
+  }
+
+  const accessToken = assinarAccessToken({ sub: usuario.id, role: usuario.role });
+  return { usuario: apresentarUsuario(usuario), accessToken, refreshToken: novoRefreshToken };
+}
+
+export async function encerrarSessao(refreshTokenApresentado: string | undefined): Promise<void> {
+  if (refreshTokenApresentado) {
+    await revogarRefreshToken(refreshTokenApresentado);
+  }
 }
 
 export async function verificarEmail(token: string): Promise<void> {
