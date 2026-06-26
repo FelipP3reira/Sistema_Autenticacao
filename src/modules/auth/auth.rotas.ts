@@ -2,7 +2,13 @@ import type { FastifyInstance } from 'fastify';
 
 import { ErroNaoAutorizado } from '../../shared/erros/erros-aplicacao.js';
 import { opcoesCookieRefresh, NOME_COOKIE_REFRESH } from '../../shared/http/cookie-refresh.js';
-import { loginSchema, registrarSchema, verificarEmailSchema } from './auth.schema.js';
+import {
+  loginSchema,
+  registrarSchema,
+  resetarSenhaSchema,
+  solicitarResetSchema,
+  verificarEmailSchema,
+} from './auth.schema.js';
 import * as auth from './auth.service.js';
 
 export function authRotas(app: FastifyInstance): void {
@@ -43,5 +49,22 @@ export function authRotas(app: FastifyInstance): void {
     const { token } = verificarEmailSchema.parse(request.body);
     await auth.verificarEmail(token);
     return reply.send({ status: 'verificado' });
+  });
+
+  app.post(
+    '/forgot-password',
+    { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } },
+    async (request, reply) => {
+      const { email } = solicitarResetSchema.parse(request.body);
+      await auth.solicitarResetSenha(email);
+      // Resposta neutra: não conta se o e-mail existe.
+      return reply.send({ status: 'se-o-email-existir-enviaremos-instrucoes' });
+    },
+  );
+
+  app.post('/reset-password', async (request, reply) => {
+    const { token, novaSenha } = resetarSenhaSchema.parse(request.body);
+    await auth.resetarSenha(token, novaSenha);
+    return reply.send({ status: 'senha-redefinida' });
   });
 }

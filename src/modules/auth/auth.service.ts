@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 
-import { enviarEmailVerificacao } from '../../shared/email/enviador.js';
+import { enviarEmailResetSenha, enviarEmailVerificacao } from '../../shared/email/enviador.js';
 import {
   ErroConflito,
   ErroNaoAutorizado,
@@ -17,6 +17,7 @@ import {
   revogarTodosDoUsuario,
   rotacionarRefreshToken,
 } from './refresh-token.js';
+import { consumirTokenReset, gerarTokenReset } from './reset-senha.js';
 import { apresentarUsuario, type UsuarioPublico } from './usuario.mapeador.js';
 import { consumirTokenVerificacao, gerarTokenVerificacao } from './verificacao-email.js';
 
@@ -94,6 +95,30 @@ export async function verificarEmail(token: string): Promise<void> {
   }
 
   await prisma.user.update({ where: { id: userId }, data: { emailVerificado: true } });
+}
+
+// Sempre retorna sem erro, exista o e-mail ou não — não revela quais e-mails
+// estão cadastrados.
+export async function solicitarResetSenha(email: string): Promise<void> {
+  const usuario = await prisma.user.findUnique({ where: { email } });
+  if (!usuario) {
+    return;
+  }
+  const token = await gerarTokenReset(usuario.id);
+  enviarEmailResetSenha(usuario.email, token);
+}
+
+export async function resetarSenha(token: string, novaSenha: string): Promise<void> {
+  const userId = await consumirTokenReset(token);
+  if (!userId) {
+    throw new ErroValidacao('Token de reset inválido ou expirado.');
+  }
+
+  const senhaHash = await gerarHashSenha(novaSenha);
+  await prisma.user.update({ where: { id: userId }, data: { senhaHash } });
+
+  // Trocou a senha: derruba todas as sessões abertas.
+  await revogarTodosDoUsuario(userId);
 }
 
 function violouUnicidade(erro: unknown): boolean {
