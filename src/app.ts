@@ -5,6 +5,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 
 import { config } from './config/env.js';
 import { authRotas } from './modules/auth/auth.rotas.js';
+import { usersRotas } from './modules/users/users.rotas.js';
 import { registrarTratamentoDeErro } from './shared/http/erro-handler.js';
 import { montarCorpoErro } from './shared/http/resposta-erro.js';
 
@@ -33,6 +34,7 @@ export async function criarApp(): Promise<FastifyInstance> {
   app.get('/health', () => ({ status: 'ok' }));
 
   await app.register(authRotas, { prefix: '/v1/auth' });
+  await app.register(usersRotas, { prefix: '/v1' });
 
   return app;
 }
